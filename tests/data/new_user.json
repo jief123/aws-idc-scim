@@ -1,0 +1,18 @@
+{
+  "userName": "testuser@example.com",
+  "name": {
+    "familyName": "测试",
+    "givenName": "用户"
+  },
+  "displayName": "测试用户",
+  "emails": [
+    {
+      "value": "testuser@example.com",
+      "type": "work",
+      "primary": true
+    }
+  ],
+  "active": true,
+  "title": "测试工程师",
+  "department": "测试部"
+}

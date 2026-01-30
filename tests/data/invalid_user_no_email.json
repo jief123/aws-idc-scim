@@ -1,0 +1,9 @@
+{
+  "userName": "nomail@example.com",
+  "name": {
+    "familyName": "测试",
+    "givenName": "用户"
+  },
+  "displayName": "测试用户",
+  "emails": []
+}

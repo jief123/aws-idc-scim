@@ -1,0 +1,15 @@
+[
+  {
+    "displayName": "Developers",
+    "members": [
+      {"value": "user1@example.com"},
+      {"value": "user2@example.com"}
+    ]
+  },
+  {
+    "displayName": "Admins",
+    "members": [
+      {"value": "user1@example.com"}
+    ]
+  }
+]

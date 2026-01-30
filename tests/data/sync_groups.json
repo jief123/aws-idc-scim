@@ -1,0 +1,15 @@
+[
+  {
+    "displayName": "测试组A",
+    "members": [
+      {"value": "sync_user1@example.com"}
+    ]
+  },
+  {
+    "displayName": "测试组B",
+    "members": [
+      {"value": "sync_user1@example.com"},
+      {"value": "sync_user2@example.com"}
+    ]
+  }
+]

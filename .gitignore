@@ -1,0 +1,39 @@
+# 敏感配置文件
+scim-config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.kiro/
+
+# macOS
+.DS_Store
+
+# 临时/测试数据文件 (包含真实用户数据)
+users.json
+groups.json
+test_users_*.json
+kiro_*.csv
+*.zip
+
+# 生成的文件
+*.pdf
+empty_members.json
+
+# 临时脚本
+add_members_commands.sh
+batch_add_members.sh
+gen.sh

@@ -1,0 +1,16 @@
+[
+  {
+    "userName": "sync_user1@example.com",
+    "name": {"familyName": "同步", "givenName": "用户1"},
+    "displayName": "同步用户1",
+    "emails": [{"value": "sync_user1@example.com", "type": "work", "primary": true}],
+    "active": true
+  },
+  {
+    "userName": "sync_user2@example.com",
+    "name": {"familyName": "同步", "givenName": "用户2"},
+    "displayName": "同步用户2",
+    "emails": [{"value": "sync_user2@example.com", "type": "work", "primary": true}],
+    "active": true
+  }
+]

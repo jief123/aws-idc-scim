@@ -1,0 +1,4 @@
+{
+  "scim_endpoint": "https://scim.us-east-1.amazonaws.com/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/scim/v2",
+  "scim_token": "your-scim-token-here"
+}

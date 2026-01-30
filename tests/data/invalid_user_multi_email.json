@@ -1,0 +1,12 @@
+{
+  "userName": "multimail@example.com",
+  "name": {
+    "familyName": "测试",
+    "givenName": "用户"
+  },
+  "displayName": "测试用户",
+  "emails": [
+    {"value": "mail1@example.com", "type": "work", "primary": true},
+    {"value": "mail2@example.com", "type": "home"}
+  ]
+}
