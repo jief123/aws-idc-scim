@@ -1,93 +1,64 @@
 #!/usr/bin/env python3
-"""将 kiro 名单 CSV 转换为 group import-csv 格式"""
+"""遍历 CSV 的 charge_uuid 列，通过 SCIM 查询 username 并替换"""
 
 import csv
 import sys
+import re
+from aws_idc_scim.client import SCIMClient
 
+def load_config():
+    import json
+    with open("scim-config.json") as f:
+        return json.load(f)
 
-# 套餐到组名的映射
-PLAN_TO_GROUP = {
-    "Kiro Pro+(2000 Credits)": "aws-global-kiro-proplus",
-    "Kiro Pro(1000 Credits)": "aws-global-kiro-pro",
-    "Kiro Power(10000 Credits)": "aws-global-kiro-power",
-}
+def extract_user_id(arn: str) -> str | None:
+    """从 arn:aws:identitystore:::user/xxx 中提取 user_id"""
+    m = re.search(r'user/([a-f0-9-]+)', arn)
+    return m.group(1) if m else None
 
-
-def convert_csv(input_file, output_file):
-    """转换 CSV 格式"""
+def main():
+    csv_file = sys.argv[1] if len(sys.argv) > 1 else "kiro_bill_parsed.csv"
     
-    with open(input_file, 'r', encoding='utf-8-sig') as f:
+    config = load_config()
+    client = SCIMClient(config["scim_endpoint"], config["scim_token"])
+    
+    # 缓存 user_id -> username，避免重复查询
+    cache = {}
+    
+    # 读取 CSV
+    with open(csv_file, newline='') as f:
         reader = csv.DictReader(f)
-        
-        # 统计
-        stats = {}
-        rows = []
-        
-        for row in reader:
-            plan = row.get('开通套餐', '').strip()
-            username = row.get('用户名', '').strip()
-            email = row.get('邮箱', '').strip()
-            
-            if not username:
-                print(f"⚠️  跳过：缺少用户名 - {row}")
-                continue
-            
-            # 映射到组名
-            group_name = PLAN_TO_GROUP.get(plan)
-            
-            if not group_name:
-                print(f"⚠️  未知套餐类型: {plan} (用户: {username})")
-                continue
-            
-            # 添加 @xiaomi.com 后缀（如果需要）
-            if email and '@' in email:
-                member_identifier = email
-            elif '@' not in username:
-                member_identifier = f"{username}@xiaomi.com"
-            else:
-                member_identifier = username
-            
-            rows.append({
-                'group_name': group_name,
-                'member': member_identifier
-            })
-            
-            # 统计
-            stats[group_name] = stats.get(group_name, 0) + 1
+        fieldnames = reader.fieldnames
+        rows = list(reader)
     
-    # 写入输出文件
-    with open(output_file, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['group_name', 'member'])
+    # 遍历所有列的所有单元格，按内容匹配 identitystore ARN
+    for row in rows:
+        for col in fieldnames:
+            val = row[col]
+            user_id = extract_user_id(val)
+            if not user_id:
+                continue
+            
+            if user_id not in cache:
+                try:
+                    user = client.get_user(user_id)
+                    cache[user_id] = user.userName
+                    print(f"  {user_id} -> {user.userName}")
+                except Exception as e:
+                    print(f"  查询失败 {user_id}: {e}")
+                    cache[user_id] = val  # 查询失败保留原值
+            
+            row[col] = cache[user_id]
+    
+    client.close()
+    
+    # 写回 CSV
+    with open(csv_file, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
     
-    # 打印统计
-    print(f"\n✓ 转换完成: {output_file}")
-    print(f"\n统计:")
-    for group, count in sorted(stats.items()):
-        print(f"  {group}: {count} 个成员")
-    print(f"\n总计: {sum(stats.values())} 个成员")
-    
-    return True
-
-
-def main():
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="转换 kiro 名单为 group import-csv 格式")
-    parser.add_argument("input_file", help="输入 CSV 文件")
-    parser.add_argument("-o", "--output", default="kiro_groups.csv", help="输出文件名 (默认: kiro_groups.csv)")
-    
-    args = parser.parse_args()
-    
-    try:
-        convert_csv(args.input_file, args.output)
-        print(f"\n下一步:")
-        print(f"  python scim_cli.py group import-csv {args.output}")
-    except Exception as e:
-        print(f"✗ 错误: {e}")
-        sys.exit(1)
-
+    print(f"\n完成，已更新 {csv_file}")
 
 if __name__ == "__main__":
     main()

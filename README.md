@@ -141,6 +141,22 @@ python scim_cli.py group full-sync --delete [groups.json]
 | 删除用户 | ✗ | ✗ | ✓ |
 | 删除组 | ✗ | ✗ | ✓ |
 
+## 账单 CSV 用户名转换
+
+`convert_kiro_csv.py` 可以将 Kiro 账单 CSV 中的 Identity Store ARN（`arn:aws:identitystore:::user/xxx`）自动替换为对应的 SCIM 用户名。
+
+- 不依赖固定表头，自动扫描所有单元格匹配 ARN 格式
+- 同一 user_id 只查询一次 SCIM API（有缓存）
+- CSV 其他列原样保留
+
+```bash
+# 默认处理 kiro_bill_parsed.csv
+python convert_kiro_csv.py
+
+# 指定其他 CSV 文件
+python convert_kiro_csv.py my_bill.csv
+```
+
 ## REST API
 
 ```bash
