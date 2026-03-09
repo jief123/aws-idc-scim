@@ -225,6 +225,26 @@ def cmd_user_full_sync(args):
     print(f"\n{summary}")
     client.close()
 
+def cmd_user_groups(args):
+    """查询用户所属的所有组"""
+    client = get_client()
+    try:
+        user = client.find_user_by_username(args.username)
+        if not user or not user.id:
+            raise ValueError(f"用户不存在: {args.username}")
+
+        groups = client.get_user_groups(user.id)
+        print(f"用户 '{args.username}' 属于 {len(groups)} 个组:\n")
+        for g in groups:
+            print(f"  {g.displayName} [id: {g.id}]")
+        client.close()
+        return 0
+    except (SCIMClientError, ValueError) as e:
+        print(f"✗ {e}")
+        client.close()
+        return 1
+
+
 
 # ========== 组命令 ==========
 
@@ -531,6 +551,10 @@ def main():
     p.add_argument('file', nargs='?', default='users.json', help='JSON 文件')
     p.add_argument('--dry-run', action='store_true', help='预览模式')
     p.set_defaults(func=cmd_user_sync)
+    
+    p = user_sub.add_parser('groups', help='查询用户所属的组')
+    p.add_argument('username')
+    p.set_defaults(func=cmd_user_groups)
     
     p = user_sub.add_parser('full-sync', help='全量同步用户（添加/更新，可选删除）')
     p.add_argument('file', nargs='?', default='users.json', help='JSON 文件')
