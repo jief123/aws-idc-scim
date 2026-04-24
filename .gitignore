@@ -26,8 +26,19 @@ ENV/
 users.json
 groups.json
 test_users_*.json
+test_users.json
+test_groups.json
+test_one_user.json
+user_groups.csv
 kiro_*.csv
 *.zip
+
+# 探测 / 临时脚本
+probe_user_raw.py
+gen_test_data.py
+
+# 凭据
+cred
 
 # 生成的文件
 *.pdf

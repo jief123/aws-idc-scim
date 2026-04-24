@@ -363,9 +363,7 @@ class SCIMUser:
             return
         if not self.userName:
             raise SCIMValidationError("userName 是必填字段")
-        if not self.emails:
-            raise SCIMValidationError("emails 是必填字段")
-        if len(self.emails) > 1:
+        if self.emails and len(self.emails) > 1:
             raise SCIMValidationError("emails 只能有一个值 (AWS IDC 限制)")
         if self.phoneNumbers and len(self.phoneNumbers) > 1:
             raise SCIMValidationError("phoneNumbers 只能有一个值 (AWS IDC 限制)")

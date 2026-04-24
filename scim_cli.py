@@ -461,8 +461,92 @@ def cmd_group_full_sync(args):
     client.close()
 
 
+def cmd_group_export(args):
+    """并发导出所有用户及其所属的组 -> CSV/JSON
+
+    原理: AWS IDC GET /Users 不返回 groups 字段，只能遍历用户反向查询
+    GET /Groups?filter=members.value eq "<userId>" 获取每个用户所属组。
+    用线程池并发加速，并对 429/限流做指数退避重试。
+    """
+    import csv
+    import random
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    client = get_client()
+    print("拉取所有用户...")
+    users = client.get_all_users()
+    print(f"共 {len(users)} 个用户，并发查询组归属 (workers={args.workers}, retries={args.retries})...")
+
+    results: dict[str, tuple[str, list[str]]] = {}
+    errors: list[str] = []
+
+    def fetch(user):
+        last_err = None
+        for attempt in range(args.retries + 1):
+            try:
+                groups = client.get_user_groups(user.id) if user.id else []
+                return user, [g.displayName for g in groups], None
+            except SCIMClientError as e:
+                status = e.error.status if e.error else 0
+                last_err = str(e)
+                # 429 / 5xx 重试
+                if status in (429, 500, 502, 503, 504):
+                    # 指数退避 + 抖动: 0.5, 1, 2, 4, 8...
+                    sleep = min(8.0, 0.5 * (2 ** attempt)) + random.uniform(0, 0.3)
+                    time.sleep(sleep)
+                    continue
+                break
+            except Exception as e:
+                last_err = str(e)
+                break
+        return user, [], last_err
+
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = [pool.submit(fetch, u) for u in users]
+        done = 0
+        for fut in as_completed(futures):
+            user, group_names, err = fut.result()
+            done += 1
+            if err:
+                errors.append(f"{user.userName}: {err}")
+            results[user.userName] = (user.id or "", group_names)
+            if done % 50 == 0 or done == len(users):
+                print(f"  进度 {done}/{len(users)}  错误 {len(errors)}")
+
+    client.close()
+
+    # 输出 CSV
+    out = args.output
+    if out.endswith(".json"):
+        data = [
+            {"userName": n, "userId": uid, "groups": gs}
+            for n, (uid, gs) in sorted(results.items())
+        ]
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    else:
+        # CSV: userName,userId,group  (一行一个组；无组则留空)
+        with open(out, "w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["userName", "userId", "group"])
+            for name in sorted(results.keys()):
+                uid, gs = results[name]
+                if gs:
+                    for g in gs:
+                        w.writerow([name, uid, g])
+                else:
+                    w.writerow([name, uid, ""])
+
+    print(f"\n已写入 {out}")
+    if errors:
+        print(f"错误 {len(errors)} 条:")
+        for e in errors[:10]:
+            print(f"  ✗ {e}")
+    return 1 if errors else 0
+
+
 def cmd_group_import_csv(args):
-    """从 CSV 生成/更新 groups.json"""
     import csv
     
     # 读取 CSV
@@ -606,6 +690,15 @@ def main():
     p.add_argument('file', help='CSV 文件（需要 email 和 group 列）')
     p.add_argument('-o', '--output', default='groups.json', help='输出文件，默认 groups.json')
     p.set_defaults(func=cmd_group_import_csv)
+
+    p = group_sub.add_parser('export', help='导出所有用户及其所属组 (并发)')
+    p.add_argument('-o', '--output', default='user_groups.csv',
+                   help='输出文件，.csv 或 .json，默认 user_groups.csv')
+    p.add_argument('-w', '--workers', type=int, default=8,
+                   help='并发线程数，默认 8 (避免 429)')
+    p.add_argument('-r', '--retries', type=int, default=5,
+                   help='429/5xx 最大重试次数，默认 5')
+    p.set_defaults(func=cmd_group_export)
     
     args = parser.parse_args()
     
