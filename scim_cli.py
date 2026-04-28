@@ -548,6 +548,12 @@ def cmd_group_export(args):
 
 
 def cmd_group_import_csv(args):
+    """从 CSV 生成/更新 groups.json
+    
+    支持两种 CSV 格式:
+    - export 格式: userName,userId,group
+    - 旧格式: email,group
+    """
     import csv
     
     # 读取 CSV
@@ -555,10 +561,13 @@ def cmd_group_import_csv(args):
     with open(args.file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            email = row.get('email') or row.get('Email') or row.get('EMAIL')
-            group = row.get('group') or row.get('Group') or row.get('GROUP')
-            if email and group:
-                rows.append((email.strip(), group.strip()))
+            # 优先用 userName，其次 email
+            user = (row.get('userName') or row.get('email')
+                    or row.get('Email') or row.get('EMAIL') or '').strip()
+            group = (row.get('group') or row.get('Group')
+                     or row.get('GROUP') or '').strip()
+            if user and group:
+                rows.append((user, group))
     
     if not rows:
         print("CSV 中没有有效数据（需要 email 和 group 列）")
