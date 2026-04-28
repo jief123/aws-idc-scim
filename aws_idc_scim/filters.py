@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 SCIM Filter 构建器
 
@@ -6,7 +8,6 @@ AWS IDC 只支持 eq 和 and 操作符，不支持 co/sw/or 等。
 """
 
 from dataclasses import dataclass
-from typing import Self
 
 
 @dataclass
